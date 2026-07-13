@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hcp
+      POSTGRES_PASSWORD: hcp
+      POSTGRES_DB: hcp_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - hcp_crm_pgdata:/var/lib/postgresql/data
+
+volumes:
+  hcp_crm_pgdata:

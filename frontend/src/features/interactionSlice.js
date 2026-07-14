@@ -70,7 +70,7 @@ export const suggestFollowUps = createAsyncThunk(
 
 export const sendAgentMessage = createAsyncThunk(
   "interactions/sendAgentMessage",
-  async (message, { getState }) => {
+  async (message, { getState, dispatch }) => {
     const { threadId } = getState().interactions.chat;
     const response = await fetch(`${API_BASE}/api/agent`, {
       method: "POST",
@@ -78,7 +78,11 @@ export const sendAgentMessage = createAsyncThunk(
       body: JSON.stringify({ message, thread_id: threadId }),
     });
     if (!response.ok) throw new Error("Failed to reach agent");
-    return response.json();
+    const data = await response.json();
+    if (data.tools_used && data.tools_used.length > 0) {
+      dispatch(fetchInteractions());
+    }
+    return data;
   },
 );
 

@@ -12,3 +12,6 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Assignment doc dump (not part of the submission)
+out.txt

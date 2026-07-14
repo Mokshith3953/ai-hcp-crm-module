@@ -1,5 +1,10 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
+// In dev, Vite proxies relative /api requests to the local backend (see
+// vite.config.js). In production the frontend and backend are separate
+// deployments, so VITE_API_BASE_URL points at the deployed backend's origin.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
 const initialState = {
   interactions: [],
   status: "idle",
@@ -16,7 +21,7 @@ const initialState = {
 export const fetchInteractions = createAsyncThunk(
   "interactions/fetchInteractions",
   async () => {
-    const response = await fetch("/api/interactions");
+    const response = await fetch(`${API_BASE}/api/interactions`);
     if (!response.ok) throw new Error("Failed to load interactions");
     return response.json();
   },
@@ -25,7 +30,7 @@ export const fetchInteractions = createAsyncThunk(
 export const submitInteraction = createAsyncThunk(
   "interactions/submitInteraction",
   async (payload) => {
-    const response = await fetch("/api/interactions", {
+    const response = await fetch(`${API_BASE}/api/interactions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -38,7 +43,7 @@ export const submitInteraction = createAsyncThunk(
 export const updateInteraction = createAsyncThunk(
   "interactions/updateInteraction",
   async ({ id, changes }) => {
-    const response = await fetch(`/api/interactions/${id}`, {
+    const response = await fetch(`${API_BASE}/api/interactions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(changes),
@@ -52,7 +57,7 @@ export const sendAgentMessage = createAsyncThunk(
   "interactions/sendAgentMessage",
   async (message, { getState }) => {
     const { threadId } = getState().interactions.chat;
-    const response = await fetch("/api/agent", {
+    const response = await fetch(`${API_BASE}/api/agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, thread_id: threadId }),

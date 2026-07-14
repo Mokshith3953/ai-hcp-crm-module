@@ -147,10 +147,13 @@ function App() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    // Topics Discussed is the single narrative field in this UI; it feeds
+    // both `topic` (short label) and `notes` (full text) on the backend.
+    const payload = { ...formData, notes: formData.topic };
     if (editingId) {
-      dispatch(updateInteraction({ id: editingId, changes: formData }));
+      dispatch(updateInteraction({ id: editingId, changes: payload }));
     } else {
-      dispatch(submitInteraction(formData));
+      dispatch(submitInteraction(payload));
       setFormData(EMPTY_FORM);
     }
     dispatch(clearSuggestions());
@@ -160,7 +163,7 @@ function App() {
     dispatch(
       suggestFollowUps({
         topic: formData.topic,
-        notes: formData.notes,
+        notes: formData.topic,
         outcomes: formData.outcomes,
       }),
     );
@@ -271,21 +274,10 @@ function App() {
               Topics Discussed
               <textarea
                 name="topic"
-                rows="2"
+                rows="3"
                 value={formData.topic}
                 onChange={handleChange}
                 placeholder="Enter key discussion points..."
-                required
-              />
-            </label>
-
-            <label>
-              Notes
-              <textarea
-                name="notes"
-                rows="3"
-                value={formData.notes}
-                onChange={handleChange}
                 required
               />
             </label>

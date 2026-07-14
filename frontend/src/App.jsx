@@ -8,6 +8,8 @@ import {
   chatMessageSent,
   startEditing,
   cancelEditing,
+  suggestFollowUps,
+  clearSuggestions,
 } from "./features/interactionSlice";
 
 const EMPTY_FORM = {
@@ -16,6 +18,15 @@ const EMPTY_FORM = {
   notes: "",
   channel: "structured",
   status: "Logged",
+  interaction_type: "Meeting",
+  interaction_date: "",
+  interaction_time: "",
+  attendees: [],
+  materials_shared: [],
+  samples_distributed: [],
+  sentiment: "Neutral",
+  outcomes: "",
+  follow_up_actions: "",
 };
 
 const ALL_TOOLS = [
@@ -26,11 +37,74 @@ const ALL_TOOLS = [
   "search_interactions",
 ];
 
+const SENTIMENTS = [
+  { value: "Positive", icon: "🙂" },
+  { value: "Neutral", icon: "😐" },
+  { value: "Negative", icon: "🙁" },
+];
+
+function ChipListField({ label, placeholder, addLabel, values, onChange }) {
+  const [draft, setDraft] = useState("");
+
+  const addChip = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    onChange([...values, trimmed]);
+    setDraft("");
+  };
+
+  const removeChip = (index) => {
+    onChange(values.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="chip-field">
+      <div className="chip-field-head">
+        <span className="chip-field-label">{label}</span>
+      </div>
+      {values.length === 0 ? (
+        <p className="chip-empty">None added.</p>
+      ) : (
+        <div className="chip-list">
+          {values.map((value, index) => (
+            <span key={`${value}-${index}`} className="chip">
+              {value}
+              <button
+                type="button"
+                className="chip-remove"
+                onClick={() => removeChip(index)}
+                aria-label={`Remove ${value}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="chip-input-row">
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder={placeholder}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              addChip();
+            }
+          }}
+        />
+        <button type="button" className="secondary" onClick={addChip}>
+          {addLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const dispatch = useDispatch();
-  const { interactions, status, error, editingId, chat } = useSelector(
-    (state) => state.interactions,
-  );
+  const { interactions, status, error, editingId, chat, suggestions, suggestionsStatus } =
+    useSelector((state) => state.interactions);
 
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [chatInput, setChatInput] = useState("");
@@ -52,9 +126,19 @@ function App() {
         notes: record.notes || "",
         channel: record.channel || "structured",
         status: record.status || "Logged",
+        interaction_type: record.interaction_type || "Meeting",
+        interaction_date: record.interaction_date || "",
+        interaction_time: record.interaction_time || "",
+        attendees: record.attendees || [],
+        materials_shared: record.materials_shared || [],
+        samples_distributed: record.samples_distributed || [],
+        sentiment: record.sentiment || "Neutral",
+        outcomes: record.outcomes || "",
+        follow_up_actions: record.follow_up_actions || "",
       });
     }
-  }, [editingId, interactions]);
+    dispatch(clearSuggestions());
+  }, [editingId, interactions, dispatch]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -69,6 +153,26 @@ function App() {
       dispatch(submitInteraction(formData));
       setFormData(EMPTY_FORM);
     }
+    dispatch(clearSuggestions());
+  };
+
+  const handleSuggest = () => {
+    dispatch(
+      suggestFollowUps({
+        topic: formData.topic,
+        notes: formData.notes,
+        outcomes: formData.outcomes,
+      }),
+    );
+  };
+
+  const applySuggestion = (suggestion) => {
+    setFormData((current) => ({
+      ...current,
+      follow_up_actions: current.follow_up_actions
+        ? `${current.follow_up_actions}\n${suggestion}`
+        : suggestion,
+    }));
   };
 
   const handleChatSubmit = (event) => {
@@ -86,9 +190,7 @@ function App() {
       <header className="hero-card">
         <div>
           <p className="eyebrow">AI-first CRM • HCP module</p>
-          <h1>
-            Log interactions faster with a guided form and conversational AI
-          </h1>
+          <h1>Log HCP Interaction</h1>
           <p className="hero-copy">
             Field representatives can log structured updates or ask the
             LangGraph-powered assistant to manage the interaction workflow.
@@ -99,7 +201,7 @@ function App() {
       <main className="grid-layout">
         <section className="panel">
           <div className="panel-heading">
-            <h2>{editingId ? "Edit interaction" : "Log interaction"}</h2>
+            <h2>Interaction Details</h2>
             <p>
               {editingId
                 ? `Editing interaction #${editingId}.`
@@ -108,31 +210,182 @@ function App() {
           </div>
 
           <form onSubmit={handleSubmit} className="stack">
+            <div className="field-row">
+              <label>
+                HCP Name
+                <input
+                  name="hcp_name"
+                  value={formData.hcp_name}
+                  onChange={handleChange}
+                  placeholder="Search or select HCP..."
+                  required
+                />
+              </label>
+              <label>
+                Interaction Type
+                <select
+                  name="interaction_type"
+                  value={formData.interaction_type}
+                  onChange={handleChange}
+                >
+                  <option value="Meeting">Meeting</option>
+                  <option value="Call">Call</option>
+                  <option value="Email">Email</option>
+                  <option value="Conference">Conference</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="field-row">
+              <label>
+                Date
+                <input
+                  type="date"
+                  name="interaction_date"
+                  value={formData.interaction_date}
+                  onChange={handleChange}
+                />
+              </label>
+              <label>
+                Time
+                <input
+                  type="time"
+                  name="interaction_time"
+                  value={formData.interaction_time}
+                  onChange={handleChange}
+                />
+              </label>
+            </div>
+
+            <ChipListField
+              label="Attendees"
+              placeholder="Enter name and press Add..."
+              addLabel="Add"
+              values={formData.attendees}
+              onChange={(attendees) =>
+                setFormData((current) => ({ ...current, attendees }))
+              }
+            />
+
             <label>
-              HCP name
-              <input
-                name="hcp_name"
-                value={formData.hcp_name}
-                onChange={handleChange}
-                required
-              />
-            </label>
-            <label>
-              Topic
-              <input
+              Topics Discussed
+              <textarea
                 name="topic"
+                rows="2"
                 value={formData.topic}
                 onChange={handleChange}
+                placeholder="Enter key discussion points..."
                 required
               />
             </label>
+
+            <label>
+              Notes
+              <textarea
+                name="notes"
+                rows="3"
+                value={formData.notes}
+                onChange={handleChange}
+                required
+              />
+            </label>
+
+            <div className="field-row">
+              <ChipListField
+                label="Materials Shared"
+                placeholder="Search/add material..."
+                addLabel="Search/Add"
+                values={formData.materials_shared}
+                onChange={(materials_shared) =>
+                  setFormData((current) => ({ ...current, materials_shared }))
+                }
+              />
+              <ChipListField
+                label="Samples Distributed"
+                placeholder="Add sample..."
+                addLabel="Add Sample"
+                values={formData.samples_distributed}
+                onChange={(samples_distributed) =>
+                  setFormData((current) => ({ ...current, samples_distributed }))
+                }
+              />
+            </div>
+
+            <div className="sentiment-field">
+              <span className="chip-field-label">
+                Observed/Inferred HCP Sentiment
+              </span>
+              <div className="sentiment-options">
+                {SENTIMENTS.map(({ value, icon }) => (
+                  <label key={value} className="sentiment-option">
+                    <input
+                      type="radio"
+                      name="sentiment"
+                      value={value}
+                      checked={formData.sentiment === value}
+                      onChange={handleChange}
+                    />
+                    <span>
+                      {icon} {value}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <label>
+              Outcomes
+              <textarea
+                name="outcomes"
+                rows="2"
+                value={formData.outcomes}
+                onChange={handleChange}
+                placeholder="Key outcomes or agreements..."
+              />
+            </label>
+
+            <label>
+              Follow-up Actions
+              <textarea
+                name="follow_up_actions"
+                rows="2"
+                value={formData.follow_up_actions}
+                onChange={handleChange}
+                placeholder="Enter next steps or tasks..."
+              />
+            </label>
+
+            <div className="suggestions-box">
+              <button
+                type="button"
+                className="secondary"
+                onClick={handleSuggest}
+                disabled={suggestionsStatus === "loading"}
+              >
+                {suggestionsStatus === "loading"
+                  ? "Thinking..."
+                  : "✨ AI Suggested Follow-ups"}
+              </button>
+              {suggestions.length > 0 ? (
+                <ul className="suggestion-list">
+                  {suggestions.map((s, idx) => (
+                    <li key={idx}>
+                      <button
+                        type="button"
+                        className="suggestion-item"
+                        onClick={() => applySuggestion(s)}
+                      >
+                        + {s}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+
             <label>
               Channel
-              <select
-                name="channel"
-                value={formData.channel}
-                onChange={handleChange}
-              >
+              <select name="channel" value={formData.channel} onChange={handleChange}>
                 <option value="structured">Structured</option>
                 <option value="chat">Chat</option>
                 <option value="email">Email</option>
@@ -140,26 +393,13 @@ function App() {
             </label>
             <label>
               Status
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-              >
+              <select name="status" value={formData.status} onChange={handleChange}>
                 <option value="Logged">Logged</option>
                 <option value="Follow-up scheduled">Follow-up scheduled</option>
                 <option value="Closed">Closed</option>
               </select>
             </label>
-            <label>
-              Notes
-              <textarea
-                name="notes"
-                rows="4"
-                value={formData.notes}
-                onChange={handleChange}
-                required
-              />
-            </label>
+
             <div className="button-row">
               <button type="submit" disabled={status === "loading"}>
                 {status === "loading"
@@ -184,11 +424,11 @@ function App() {
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>AI assistant</h2>
+            <h2>AI Assistant</h2>
             <p>
-              Try prompts such as “log a follow-up with Dr. Rao about the new
-              cardiology trial”, “edit interaction 1, set status to closed”,
-              or “summarize all interactions”.
+              Log interaction details here (e.g. “Met Dr. Smith, discussed
+              Product X efficacy, positive sentiment, shared brochure”) or ask
+              for help.
             </p>
           </div>
 
@@ -216,15 +456,14 @@ function App() {
             ) : null}
           </div>
 
-          <form onSubmit={handleChatSubmit} className="stack">
-            <textarea
-              rows="3"
+          <form onSubmit={handleChatSubmit} className="chat-input-row">
+            <input
               value={chatInput}
               onChange={(event) => setChatInput(event.target.value)}
-              placeholder="Describe the interaction or ask the agent to act"
+              placeholder="Describe interaction..."
             />
             <button type="submit" disabled={chat.status === "loading"}>
-              Send to agent
+              Log
             </button>
           </form>
 

@@ -35,7 +35,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://ai-hcp-crm-backend.onrender.com
+        value: https://ai-hcp-crm-backend-y82n.onrender.com
     routes:
       - type: rewrite
         source: /*

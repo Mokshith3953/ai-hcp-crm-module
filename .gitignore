@@ -15,3 +15,6 @@ Thumbs.db
 
 # Assignment doc dump (not part of the submission)
 out.txt
+
+# Local Claude Code state
+.claude/

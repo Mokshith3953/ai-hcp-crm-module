@@ -11,8 +11,13 @@ from app.schemas import InteractionCreate, InteractionUpdate
 EXTRACTION_PROMPT = """You are an entity-extraction assistant for a pharma CRM.
 From the free-text note below, extract JSON with keys:
 hcp_name, hcp_specialty, topic, sentiment (Positive/Neutral/Negative), notes (a cleaned-up
-one or two sentence summary of the interaction).
-If a field cannot be determined, use null. Respond with ONLY the JSON object, no prose.
+one or two sentence summary of the interaction), interaction_type (one of: Meeting, Call,
+Email, Conference — best guess, default "Meeting"), attendees (array of person names
+mentioned besides the HCP, [] if none), materials_shared (array of document/brochure/sample
+names mentioned, [] if none), outcomes (a short sentence on what was agreed or decided, or
+null).
+If a field cannot be determined, use null (or [] for array fields). Respond with ONLY the
+JSON object, no prose.
 
 Note: {text}"""
 
@@ -65,6 +70,10 @@ def log_interaction(
         notes=extracted.get("notes") or notes or "No additional notes provided.",
         channel=channel,
         sentiment=extracted.get("sentiment"),
+        interaction_type=extracted.get("interaction_type") or "Meeting",
+        attendees=extracted.get("attendees") or [],
+        materials_shared=extracted.get("materials_shared") or [],
+        outcomes=extracted.get("outcomes"),
     )
 
     db = SessionLocal()
@@ -95,7 +104,9 @@ def edit_interaction(interaction_id: str, updates: str) -> str:
     prompt = (
         "Given this instruction, produce a JSON object with only the fields to update "
         "from this set: hcp_name, hcp_specialty, topic, notes, channel, sentiment, "
-        "status, follow_up_date. Respond with ONLY JSON.\n\nInstruction: " + updates
+        "status, follow_up_date, interaction_type, interaction_date, interaction_time, "
+        "outcomes, follow_up_actions (attendees/materials_shared/samples_distributed are "
+        "arrays of strings if included). Respond with ONLY JSON.\n\nInstruction: " + updates
     )
     response = llm.invoke([HumanMessage(content=prompt)])
     content = response.content.strip().strip("`")

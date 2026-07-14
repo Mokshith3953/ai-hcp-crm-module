@@ -10,6 +10,8 @@ const initialState = {
   status: "idle",
   error: null,
   editingId: null,
+  suggestions: [],
+  suggestionsStatus: "idle",
   chat: {
     threadId: null,
     messages: [],
@@ -53,6 +55,19 @@ export const updateInteraction = createAsyncThunk(
   },
 );
 
+export const suggestFollowUps = createAsyncThunk(
+  "interactions/suggestFollowUps",
+  async ({ topic, notes, outcomes }) => {
+    const response = await fetch(`${API_BASE}/api/interactions/suggest-followups`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, notes, outcomes }),
+    });
+    if (!response.ok) throw new Error("Failed to get suggestions");
+    return response.json();
+  },
+);
+
 export const sendAgentMessage = createAsyncThunk(
   "interactions/sendAgentMessage",
   async (message, { getState }) => {
@@ -81,9 +96,23 @@ const interactionSlice = createSlice({
       state.chat.messages.push({ role: "user", content: action.payload });
       state.chat.status = "loading";
     },
+    clearSuggestions(state) {
+      state.suggestions = [];
+      state.suggestionsStatus = "idle";
+    },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(suggestFollowUps.pending, (state) => {
+        state.suggestionsStatus = "loading";
+      })
+      .addCase(suggestFollowUps.fulfilled, (state, action) => {
+        state.suggestions = action.payload.suggestions;
+        state.suggestionsStatus = "succeeded";
+      })
+      .addCase(suggestFollowUps.rejected, (state) => {
+        state.suggestionsStatus = "failed";
+      })
       .addCase(fetchInteractions.pending, (state) => {
         state.status = "loading";
       })
@@ -138,6 +167,6 @@ const interactionSlice = createSlice({
   },
 });
 
-export const { startEditing, cancelEditing, chatMessageSent } =
+export const { startEditing, cancelEditing, chatMessageSent, clearSuggestions } =
   interactionSlice.actions;
 export default interactionSlice.reducer;

@@ -1,8 +1,19 @@
+import json
+
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models import Interaction
 from app.schemas import InteractionCreate, InteractionUpdate
+
+LIST_FIELDS = ("attendees", "materials_shared", "samples_distributed")
+
+
+def _encode_lists(data: dict) -> dict:
+    for field in LIST_FIELDS:
+        if field in data and data[field] is not None:
+            data[field] = json.dumps(data[field])
+    return data
 
 
 def list_interactions(db: Session, limit: int = 50) -> list[Interaction]:
@@ -19,7 +30,7 @@ def get_interaction(db: Session, interaction_id: int) -> Interaction | None:
 
 
 def create_interaction(db: Session, payload: InteractionCreate) -> Interaction:
-    interaction = Interaction(**payload.model_dump())
+    interaction = Interaction(**_encode_lists(payload.model_dump()))
     db.add(interaction)
     db.commit()
     db.refresh(interaction)
@@ -32,7 +43,8 @@ def update_interaction(
     interaction = get_interaction(db, interaction_id)
     if interaction is None:
         return None
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = _encode_lists(payload.model_dump(exclude_unset=True))
+    for field, value in data.items():
         setattr(interaction, field, value)
     db.commit()
     db.refresh(interaction)

@@ -4,6 +4,16 @@ An AI-first CRM module for pharmaceutical field representatives to log,
 edit, search, and summarize interactions with Healthcare Professionals
 (HCPs) — either through a structured form or a conversational AI assistant.
 
+## Live deployment
+
+- **Frontend:** https://ai-hcp-crm-frontend.onrender.com
+- **Backend API:** https://ai-hcp-crm-backend-y82n.onrender.com
+
+Hosted on Render (free tier) from `render.yaml` — a Postgres database, the
+FastAPI backend, and the React static site. The backend spins down after 15
+minutes idle on the free tier, so the first request after inactivity can
+take 30–50s to wake up.
+
 ## Tech stack
 
 - **Frontend:** React + Redux Toolkit + Vite, Google Inter font
@@ -44,8 +54,11 @@ docker-compose.yml        Local PostgreSQL for development
 
 The screen exposes two ways to capture the same underlying data:
 
-1. **Structured form** — HCP name, topic, channel, status, and notes, saved
-   directly via `POST /api/interactions` / edited via `PATCH
+1. **Structured form** — HCP name, interaction type, date/time, attendees,
+   topics discussed, materials shared, samples distributed, observed
+   sentiment, outcomes, and follow-up actions (with an "AI Suggested
+   Follow-ups" button backed by `POST /api/interactions/suggest-followups`).
+   Saved via `POST /api/interactions` / edited via `PATCH
    /api/interactions/{id}`.
 2. **Conversational chat** — a free-text box where a rep can type things like
    *"log a follow-up with Dr. Rao about the new cardiology trial"*. The
@@ -59,7 +72,7 @@ versa). Clicking a recent interaction loads it into the form for editing.
 
 The agent is a small `StateGraph` with two nodes:
 
-- **`agent`** — a Groq LLM (`gemma2-9b-it`) with the 5 tools bound via
+- **`agent`** — a Groq LLM (`llama-3.3-70b-versatile`) with the 5 tools bound via
   `bind_tools`, given a system prompt describing its role as the CRM
   assistant for a field rep.
 - **`tools`** — a `ToolNode` that executes whichever tool(s) the LLM decided
@@ -121,7 +134,7 @@ Open `http://localhost:5173`. Vite proxies `/api` to the backend.
 ```
 DATABASE_URL=postgresql+psycopg2://hcp:hcp@localhost:5432/hcp_crm
 GROQ_API_KEY=your_groq_api_key_here
-GROQ_MODEL=gemma2-9b-it
+GROQ_MODEL=llama-3.3-70b-versatile
 CORS_ORIGINS=http://localhost:5173
 ```
 
@@ -130,6 +143,22 @@ CORS_ORIGINS=http://localhost:5173
 - `GET /api/interactions` — list recent interactions
 - `POST /api/interactions` — create one (structured form)
 - `PATCH /api/interactions/{id}` — update one (structured form edit)
+- `POST /api/interactions/suggest-followups` — LLM-generated follow-up
+  suggestions from `{ topic, notes, outcomes }`
 - `POST /api/agent` — send a chat message to the LangGraph agent
   - Request: `{ "message": "...", "thread_id": "optional-existing-thread" }`
   - Response: `{ "reply": "...", "thread_id": "...", "tools_used": [...], "tools": [...] }`
+
+## Deploying (Render)
+
+`render.yaml` provisions a Postgres database, the FastAPI backend, and the
+React static site together. Click **New → Blueprint** on Render, point it at
+this repo, and it reads `render.yaml` automatically. You'll be prompted for
+the `GROQ_API_KEY` secret since that's intentionally not in the file.
+
+Render service names are globally unique across *all* Render accounts, not
+just your own — if `ai-hcp-crm-backend` is already taken, Render silently
+suffixes yours (e.g. `ai-hcp-crm-backend-y82n`). After the first deploy,
+check the actual assigned URLs and update `CORS_ORIGINS` (backend) and
+`VITE_API_BASE_URL` (frontend) in `render.yaml` to match if they were
+suffixed, then push — both services auto-deploy on push.

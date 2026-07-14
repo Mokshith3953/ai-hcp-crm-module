@@ -26,14 +26,21 @@ def run_agent(request: AgentRequest):
     prior_count = len(prior_state.values.get("messages", [])) if prior_state.values else 0
 
     result = graph.invoke(
-        {"messages": [HumanMessage(content=message)], "tool_hops": 0}, config=config
+        {
+            "messages": [HumanMessage(content=message)],
+            "tool_hops": 0,
+            "called_tools": [],
+        },
+        config=config,
     )
     new_messages = result["messages"][prior_count:]
 
     tools_used = [
         m.name
         for m in new_messages
-        if isinstance(m, ToolMessage) and m.name in TOOL_NAMES
+        if isinstance(m, ToolMessage)
+        and m.name in TOOL_NAMES
+        and not (isinstance(m.content, str) and m.content.startswith("Skipped:"))
     ]
     reply = next(
         (

@@ -60,6 +60,8 @@ textarea {
 }
 .panel {
   padding: 20px;
+  overflow: hidden;
+  min-width: 0;
 }
 .panel-heading h2 {
   margin: 0 0 6px;
@@ -78,6 +80,7 @@ label {
   gap: 6px;
   font-weight: 600;
   color: #374151;
+  min-width: 0;
 }
 input,
 select,
@@ -86,6 +89,8 @@ textarea {
   border-radius: 10px;
   padding: 10px 12px;
   background: #fcfdff;
+  width: 100%;
+  min-width: 0;
 }
 button {
   border: none;
@@ -210,12 +215,13 @@ button.secondary {
 }
 .field-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
 .chip-field {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 .chip-field-label {
   font-weight: 600;
@@ -256,9 +262,15 @@ button.secondary {
 .chip-input-row {
   display: flex;
   gap: 8px;
+  min-width: 0;
 }
 .chip-input-row input {
   flex: 1;
+  min-width: 0;
+  width: auto;
+}
+.chip-input-row button {
+  flex-shrink: 0;
 }
 .sentiment-field {
   display: grid;
@@ -307,9 +319,12 @@ button.secondary {
   display: flex;
   gap: 8px;
   margin-bottom: 14px;
+  min-width: 0;
 }
 .chat-input-row input {
   flex: 1;
+  min-width: 0;
+  width: auto;
 }
 @media (max-width: 900px) {
   .grid-layout {

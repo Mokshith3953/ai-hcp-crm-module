@@ -25,7 +25,9 @@ def run_agent(request: AgentRequest):
     prior_state = graph.get_state(config)
     prior_count = len(prior_state.values.get("messages", [])) if prior_state.values else 0
 
-    result = graph.invoke({"messages": [HumanMessage(content=message)]}, config=config)
+    result = graph.invoke(
+        {"messages": [HumanMessage(content=message)], "tool_hops": 0}, config=config
+    )
     new_messages = result["messages"][prior_count:]
 
     tools_used = [
